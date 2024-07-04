@@ -2,10 +2,68 @@ import telebot
 from telebot import types
 import requests
 
+
 TOKEN = '7499761737:AAEO706uu3_XVOAk4gMTFSVeMONoxEBpQIc'
 bot = telebot.TeleBot(TOKEN)
 
 user_data = {}
+
+def send_data_to_endpoint_vacancies(chat_id, have_to_send=True):
+    url = 'http://127.0.0.1:8000/vacancies'
+    headers = {'Content-Type': 'application/json'}
+    payload = {
+        'keyword': user_data[chat_id].get('vacancy'),
+        'page': str(user_data[chat_id].get('page_num')),
+        'experience': user_data[chat_id].get('experience', ),
+        'employment': user_data[chat_id].get('employment'),
+        'schedule': user_data[chat_id].get('schedule'),
+        'part_time': user_data[chat_id].get('part_times'),
+        'salary': str(user_data[chat_id].get('salary'))
+    }
+
+    response = requests.post(url, json=payload, headers=headers)
+    if response.status_code == 200:
+        vacancies = response.json().get("vacancies", [])
+        if vacancies:
+            if not have_to_send:
+                return vacancies
+            for vacancy in vacancies:
+                bot.send_message(chat_id, format_vacancy(vacancy))
+            bot.send_message(chat_id, "Вот вакансии, которые были найдены")
+        else:
+            if not have_to_send:
+                return []
+            bot.send_message(chat_id, "На такой запрос не было найдено вакансий")
+    else:
+        if not have_to_send:
+            return []
+        bot.send_message(chat_id, f"Произошла ошибка при отправке вашего запроса.")
+
+
+def format_vacancy(vacancy):
+    return (
+        f"Название: {vacancy['title']}\n"
+        f"Опыт: {vacancy.get('experience', 'Не указано')}\n"
+        f"Компания: {vacancy.get('company', 'Не указано')}\n"
+        f"Зарплата: {vacancy.get('salary', 'Не указано')}\n"
+        f"Локация: {vacancy.get('location', 'Не указано')}\n"
+        f"Ссылка: {vacancy.get('link', 'Не указано')}"
+    )
+
+
+def send_data_to_endpoint_analytics(chat_id, param, param_name):
+    url = f"http://127.0.0.1:8000/analytics/{param_name}?{param_name}={param}"
+    headers = {'Content-Type': 'application/json'}
+
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        results = response.json().get("result", [])
+        if results:
+            for result in results:
+                bot.send_message(chat_id, result)
+    else:
+        bot.send_message(chat_id, f"Произошла какая-то ошибка")
+
 
 start_message = "Привет! Давайте найдем вакансии, которые вас интересуют"
 
@@ -77,24 +135,32 @@ def get_analytics(message):
         bot.send_message(message.chat.id, 'Выберите из предложенных в списке')
 
 
-def send_data_to_endpoint_analytics_title(chat_id, title):
-    url = f"http://127.0.0.1:8000/analytics/title?title={title}"
-    headers = {'Content-Type': 'application/json'}
-
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return response.text
-    else:
-        bot.send_message(chat_id, f"Произошла какая-то ошибка")
-
-
 @bot.message_handler(func=lambda message: user_data.get(message.chat.id, {}).get('state') == 'WAITING_FOR_TITLE_ANALYTICS')
 def get_title_analytics(message):
-    # response = send_data_to_endpoint_analytics_title(message.chat.id, message.text)
-    bot.send_message(message.chat.id, send_data_to_endpoint_analytics_title(message.chat.id, message.text))
-    user_data[message.chat.id]['state'] = 'WAITING_FOR_START'
-    bot.send_message(message.chat.id, "Учтите, что информация может быть неточной или неверной",
-                     reply_markup=generate_markup(["Вернуться в главное меню"]))
+    user_data[message.chat.id]['vacancy'] = message.text
+    user_data[message.chat.id]['page_num'] = "0"
+    for param in ['experience', 'employment', 'schedule', 'part_times']:
+        user_data[message.chat.id][param] = None
+    user_data[message.chat.id]['salary'] = "0"
+    send_data_to_endpoint_vacancies(message.chat.id, have_to_send=False)
+    send_data_to_endpoint_analytics(message.chat.id, message.text, "title")
+    user_data[message.chat.id] = {'state': 'WAITING_FOR_START'}
+    bot.send_message(message.chat.id, 'Выберите, что вы хотите сделать', reply_markup=generate_markup([
+        'Просмотреть вакансии на сайте', 'Провести аналитику с уже имеющимися данными в базе данных']))
+
+
+@bot.message_handler(func=lambda message: user_data.get(message.chat.id, {}).get('state') == 'WAITING_FOR_COMPANY_ANALYTICS')
+def get_title_analytics(message):
+    user_data[message.chat.id]['vacancy'] = message.text
+    user_data[message.chat.id]['page_num'] = "0"
+    for param in ['experience', 'employment', 'schedule', 'part_times']:
+        user_data[message.chat.id][param] = None
+    user_data[message.chat.id]['salary'] = "0"
+    send_data_to_endpoint_vacancies(message.chat.id, have_to_send=False)
+    send_data_to_endpoint_analytics(message.chat.id, message.text, "company")
+    user_data[message.chat.id] = {'state': 'WAITING_FOR_START'}
+    bot.send_message(message.chat.id, 'Выберите, что вы хотите сделать', reply_markup=generate_markup([
+        'Просмотреть вакансии на сайте', 'Провести аналитику с уже имеющимися данными в базе данных']))
 
 
 @bot.message_handler(func=lambda message: user_data.get(message.chat.id, {}).get('state') == 'WAITING_FOR_MAIN')
@@ -163,45 +229,9 @@ def handle_parser(message):
                 'Показать еще', 'Выйти в главное меню'
             ]))
     else:
-        user_data[message.chat.id]['state'] = 'WAITING_FOR_START'
-        bot.send_message(message.chat.id, "Напишите, что вы хотите сделать")
-
-
-def send_data_to_endpoint_vacancies(chat_id):
-    url = 'http://127.0.0.1:8000/vacancies'
-    headers = {'Content-Type': 'application/json'}
-    payload = {
-        'keyword': user_data[chat_id].get('vacancy'),
-        'page': str(user_data[chat_id].get('page_num')),
-        'experience': user_data[chat_id].get('experience'),
-        'employment': user_data[chat_id].get('employment'),
-        'schedule': user_data[chat_id].get('schedule'),
-        'part_time': user_data[chat_id].get('part_times'),
-        'salary': str(user_data[chat_id].get('salary'))
-    }
-
-    response = requests.post(url, json=payload, headers=headers)
-    if response.status_code == 200:
-        vacancies = response.json().get("vacancies", [])
-        if vacancies:
-            for vacancy in vacancies:
-                bot.send_message(chat_id, format_vacancy(vacancy))
-            bot.send_message(chat_id, "Вот вакансии, которые были найдены")
-        else:
-            bot.send_message(chat_id, "На такой запрос не было найдено вакансий")
-    else:
-        bot.send_message(chat_id, f"Произошла ошибка при отправке вашего запроса.")
-
-
-def format_vacancy(vacancy):
-    return (
-        f"Название: {vacancy['title']}\n"
-        f"Опыт: {vacancy.get('experience', 'Не указано')}\n"
-        f"Компания: {vacancy.get('company', 'Не указано')}\n"
-        f"Зарплата: {vacancy.get('salary', 'Не указано')}\n"
-        f"Локация: {vacancy.get('location', 'Не указано')}\n"
-        f"Ссылка: {vacancy.get('link', 'Не указано')}"
-    )
+        user_data[message.chat.id] = {'state': 'WAITING_FOR_START'}
+        bot.send_message(message.chat.id, 'Выберите, что вы хотите сделать', reply_markup=generate_markup([
+            'Просмотреть вакансии на сайте', 'Провести аналитику с уже имеющимися данными в базе данных']))
 
 
 bot.polling(none_stop=True)

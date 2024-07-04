@@ -8,7 +8,7 @@ from selenium.webdriver.chrome.options import Options
 import time
 
 from sqlalchemy.orm import Session
-from src.analytics import analytics_by_title
+from src.analytics import analytics_by_title, analytics_by_company
 from src.database import Vacancy, get_db
 
 app = FastAPI()
@@ -103,21 +103,19 @@ def search_vacancies(params, session):
         existing_vacancy = False
         if vacancy_id:
             existing_vacancy = session.query(Vacancy).filter(Vacancy.id == vacancy_id).first()
-        if existing_vacancy:
-            continue
-        vacancy_id = link.split('/')[-1] if link else None
-        vacancy = Vacancy(
-            id=vacancy_id,
-            title=title,
-            experience=experience,
-            link=link,
-            company=company,
-            salary=salary,
-            location=location
-        )
-
-        session.add(vacancy)
-        session.commit()
+        if not existing_vacancy:
+            vacancy_id = link.split('/')[-1] if link else None
+            vacancy = Vacancy(
+                id=vacancy_id,
+                title=title,
+                experience=experience,
+                link=link,
+                company=company,
+                salary=salary,
+                location=location
+            )
+            session.add(vacancy)
+            session.commit()
 
         vacancies.append({
             "title": title,
@@ -140,3 +138,8 @@ def get_vacancies(params: Params, db: Session = Depends(get_db)):
 @app.get("/analytics/title")
 def get_analytics_title(title: str, db: Session = Depends(get_db)):
     return analytics_by_title(title, db)
+
+
+@app.get("/analytics/company")
+def get_analytics_company(company: str, db: Session = Depends(get_db)):
+    return analytics_by_company(company, db)
