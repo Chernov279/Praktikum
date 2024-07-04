@@ -1,12 +1,12 @@
 import telebot
+from app.config import TELEGRAM_BOT_TOKEN
 from telebot import types
 import requests
 
-
-TOKEN = '7499761737:AAEO706uu3_XVOAk4gMTFSVeMONoxEBpQIc'
-bot = telebot.TeleBot(TOKEN)
+bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
 
 user_data = {}
+
 
 def send_data_to_endpoint_vacancies(chat_id, have_to_send=True):
     url = 'http://127.0.0.1:8000/vacancies'

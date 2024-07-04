@@ -6,10 +6,9 @@ from fastapi import FastAPI, Depends
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 import time
-
 from sqlalchemy.orm import Session
-from src.analytics import analytics_by_title, analytics_by_company
-from src.database import Vacancy, get_db
+from app.analytics import analytics_by_title, analytics_by_company
+from app.database import Vacancy, get_db
 
 app = FastAPI()
 

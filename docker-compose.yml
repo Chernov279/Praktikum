@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   app:
@@ -8,6 +8,6 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@localhost/prak
+      - DATABASE_URL=${DATABASE_URL}
     volumes:
       - .:/app

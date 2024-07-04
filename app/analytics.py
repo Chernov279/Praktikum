@@ -1,7 +1,7 @@
 from collections import Counter
 import re
 from typing import Union
-from src.database import Vacancy
+from app.database import Vacancy
 from forex_python.converter import CurrencyCodes
 import requests
 from bs4 import BeautifulSoup
