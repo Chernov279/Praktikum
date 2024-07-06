@@ -18,6 +18,24 @@ employment = ["full", "part", "project", "volunteer", "probation"]
 schedules = ["fullDay", "shift", "flexible", "remote", "flyInFlyOut"]
 part_times = ["employment_project", "employment_part", "from_four_to_six_hours_in_a_day", "only_saturday_and_sunday", "start_after_sixteen"]
 
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+
+
+def create_chrome_driver():
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+
+    service = Service(binary_path)
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    return driver
+
+
+
 
 class Params(BaseModel):
     keyword: str
@@ -48,8 +66,7 @@ def build_url(params: Params) -> str:
 
 
 def search_vacancies(params, session):
-    service = webdriver.ChromeService(executable_path=binary_path)
-    driver = webdriver.Chrome(service=service)
+    driver = create_chrome_driver()
 
     url = build_url(params)
     chrome_options = Options()

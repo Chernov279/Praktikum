@@ -1,5 +1,5 @@
 import telebot
-from app.config import TELEGRAM_BOT_TOKEN
+from config import TELEGRAM_BOT_TOKEN
 from telebot import types
 import requests
 
@@ -9,7 +9,7 @@ user_data = {}
 
 
 def send_data_to_endpoint_vacancies(chat_id, have_to_send=True):
-    url = 'http://127.0.0.1:8000/vacancies'
+    url = 'http://app:8000/vacancies'
     headers = {'Content-Type': 'application/json'}
     payload = {
         'keyword': user_data[chat_id].get('vacancy'),
@@ -52,7 +52,7 @@ def format_vacancy(vacancy):
 
 
 def send_data_to_endpoint_analytics(chat_id, param, param_name):
-    url = f"http://127.0.0.1:8000/analytics/{param_name}?{param_name}={param}"
+    url = f"http://app:8000/analytics/{param_name}?{param_name}={param}"
     headers = {'Content-Type': 'application/json'}
 
     response = requests.get(url, headers=headers)
